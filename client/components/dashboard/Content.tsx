@@ -13,104 +13,238 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { sendPromiseToastMessage } from "../../lib";
 import { useAuth, UserDocument } from "../../providers/Auth";
 import moment from "moment";
+import { SOCKET_EVENTS } from '../../constants'
+import toast from 'react-hot-toast'
 
 export interface MessageFormValues {
   receiver: string
   body: string
 }
 export interface DashboardContentProps {
-  selectedUser: IUser | null;
-  toggleUserProfile: () => void;
+  selectedUser: IUser | null
+  activeUsers: IUser[]
+  toggleUserProfile: () => void
+  socket: any
 }
 export interface IMessage {
-  _id?: string;
-  sender: UserDocument;
-  receiver: UserDocument;
-  body: string;
-  createdAt: string;
+  _id?: string
+  sender: UserDocument
+  receiver: UserDocument
+  body: string
+  createdAt: string
 }
 
-export default function DashboardContent({ toggleUserProfile, selectedUser }: DashboardContentProps) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const messagesEndRef = useRef<any>(null);
-  const { data: messages, isLoading: messagesLoading, isFetched } = useQuery([API.MESSAGE.GET_MESSAGES.name, { receiver: selectedUser?._id }], API.MESSAGE.GET_MESSAGES, {
-    enabled: !!selectedUser?._id,
-  });
-  const { mutateAsync: createMessage } = useMutation(API.MESSAGE.CREATE_MESSAGE);
-  const [value, setValue] = useState("");
+export default function DashboardContent({
+  toggleUserProfile,
+  selectedUser,
+  activeUsers,
+  socket,
+}: DashboardContentProps) {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const messagesEndRef = useRef<any>(null)
+  const {
+    data: messages,
+    isLoading: messagesLoading,
+    isFetched,
+    refetch,
+  } = useQuery(
+    [API.MESSAGE.GET_MESSAGES.name, { receiver: selectedUser?._id }],
+    API.MESSAGE.GET_MESSAGES,
+    {
+      enabled: !!selectedUser?._id,
+    }
+  )
+  const { mutateAsync: createMessage } = useMutation(API.MESSAGE.CREATE_MESSAGE)
+  const [value, setValue] = useState('')
+  const [whoIsTyping, setWhoIsTyping] = useState('')
 
-  const sendMessage = useCallback(async (values: MessageFormValues) => {
-    await sendPromiseToastMessage(
-      createMessage(values),
-      "Sending",
-      "Successfully sent your message"
-    )
-    await queryClient.refetchQueries(API.MESSAGE.GET_MESSAGES.name);
-    setValue("");
-  }, [])
+  const sendMessage = useCallback(
+    async (values: MessageFormValues) => {
+      await sendPromiseToastMessage(
+        createMessage(values),
+        'Sending',
+        'Successfully sent your message'
+      )
+      await queryClient.refetchQueries(API.MESSAGE.GET_MESSAGES.name)
+      setValue('')
+      socket.emit(SOCKET_EVENTS.MESSAGE_SENT, {
+        sender: user,
+        receiver: selectedUser,
+      })
+    },
+    [user, selectedUser]
+  )
+  const sendShowTyping = useCallback(async () => {
+    socket.emit(SOCKET_EVENTS.TYPING, {
+      sender: user,
+      receiver: selectedUser,
+    })
+  }, [user, selectedUser])
+  const sendTypingEnd = useCallback(async () => {
+    socket.emit(SOCKET_EVENTS.TYPING_END, {
+      sender: user,
+      receiver: selectedUser,
+    })
+  }, [user, selectedUser])
 
   useEffect(() => {
-    if (!messagesEndRef.current) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (!messagesEndRef.current) return
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   })
 
-  if (!selectedUser) return (
-    <div className="w-full flex flex-col h-full justify-center items-center">
-      <p>Please select a friend to chat with. 😊</p>
-    </div>
-  )
+  useEffect(() => {
+    socket.on(SOCKET_EVENTS.MESSAGE_SENT, ({ sender }: { sender: IUser }) => {
+      toast.success(
+        `${sender.firstName} ${sender.lastName} has sent you a message!`
+      )
+      refetch()
+    })
+    socket.on(SOCKET_EVENTS.TYPING, ({ sender }: { sender: IUser }) => {
+      setWhoIsTyping(`${sender.firstName} ${sender.lastName} is typing...`)
+    })
+    socket.on(SOCKET_EVENTS.TYPING_END, ({ sender }: { sender: IUser }) => {
+      setWhoIsTyping('')
+    })
+  }, [])
+
+  if (!selectedUser)
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center">
+        <p>Please select a friend to chat with. 😊</p>
+      </div>
+    )
   return (
-    <div className="w-full flex flex-col h-full">
-      <div className="w-full h-16 flex items-center px-5 justify-between shadow-sm">
+    <div className="flex h-full w-full flex-col">
+      <div className="flex h-16 w-full items-center justify-between px-5 shadow-sm">
         <div className="flex items-center gap-3">
-          <Avatar status="active" src={selectedUser?.avatar || "https://picsum.photos/100"} width={40} height={40} />
-          <span className="text-xl font-semibold">{selectedUser?.firstName} {selectedUser?.lastName}</span>
+          <Avatar
+            {...(activeUsers.some((u) => u._id === selectedUser._id)
+              ? { status: 'active' }
+              : {})}
+            src={selectedUser?.avatar || 'https://picsum.photos/100'}
+            width={40}
+            height={40}
+          />
+          <span className="text-xl font-semibold">
+            {selectedUser?.firstName} {selectedUser?.lastName}
+          </span>
         </div>
 
         <div className="flex gap-3">
-          <button className="bg-slate-100 w-[30px] h-[30px] rounded-full flex justify-center items-center"><IoIosCall /></button>
-          <button className="bg-slate-100 w-[30px] h-[30px] rounded-full flex justify-center items-center"><IoMdVideocam /></button>
-          <button className="bg-slate-100 w-[30px] h-[30px] rounded-full flex justify-center items-center" onClick={toggleUserProfile}><FaUser /></button>
+          <button className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-slate-100">
+            <IoIosCall />
+          </button>
+          <button className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-slate-100">
+            <IoMdVideocam />
+          </button>
+          <button
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-slate-100"
+            onClick={toggleUserProfile}
+          >
+            <FaUser />
+          </button>
         </div>
       </div>
 
-      <div className="w-full h-full overflow-y-auto scrollbar flex flex-col-reverse">
+      <div className="scrollbar flex h-full w-full flex-col-reverse overflow-y-auto">
         {false ? (
-          <div className="flex flex-col items-center px-5 py-10 gap-1">
-            <Avatar src={selectedUser?.avatar || "https://picsum.photos/100"} width={70} height={70} />
-            <span className="text-xl font-semibold">{selectedUser?.firstName} {selectedUser?.lastName}</span>
-            <span className="text-base font-medium">{selectedUser?.firstName} {selectedUser?.lastName} is Connected</span>
+          <div className="flex flex-col items-center gap-1 px-5 py-10">
+            <Avatar
+              src={selectedUser?.avatar || 'https://picsum.photos/100'}
+              width={70}
+              height={70}
+            />
+            <span className="text-xl font-semibold">
+              {selectedUser?.firstName} {selectedUser?.lastName}
+            </span>
+            <span className="text-base font-medium">
+              {selectedUser?.firstName} {selectedUser?.lastName} is Connected
+            </span>
             <span className="text-base font-medium">3 days ago</span>
           </div>
         ) : (
-          <div className={`p-5 pb-0 ${!messages?.data?.result?.length ? "h-full" : ""}`}>
+          <div
+            className={`p-5 pb-0 ${
+              !messages?.data?.result?.length ? 'h-full' : ''
+            }`}
+          >
             {messagesLoading ? (
               <Loader />
             ) : !messages?.data?.result?.length ? (
-              <div className="w-full flex flex-col h-full justify-center items-center p-5 py-10">
+              <div className="flex h-full w-full flex-col items-center justify-center p-5 py-10">
                 <p>No messages found. 😊</p>
               </div>
             ) : (
               <>
-                <div className="h-full flex flex-col gap-5">
-                  {messages?.data?.result?.map((message: IMessage) => message.body.includes("base64") ? (
-                    <div key={message._id} className="flex gap-3 items-start flex-row-reverse">
-                      <Avatar src={message.sender._id === user?._id ? message.sender.avatar || "https://picsum.photos/100" : message.receiver.avatar || "https://picsum.photos/100"} width={30} height={30} />
-                      <div className="flex flex-col items-end">
-                        <img src={message.body} className="bg-slate-200 p-3 aspect-video object-contain max-h-20" alt="" />
-                        <small className="text-xs text-slate-500">{moment(message.createdAt).startOf('second').fromNow()}</small>
+                <div className="flex h-full flex-col gap-5">
+                  {messages?.data?.result?.map((message: IMessage) =>
+                    message.body.includes('base64') ? (
+                      <div
+                        key={message._id}
+                        className="flex flex-row-reverse items-start gap-3"
+                      >
+                        <Avatar
+                          src={
+                            message.sender._id === user?._id
+                              ? message.sender.avatar ||
+                                'https://picsum.photos/100'
+                              : message.receiver.avatar ||
+                                'https://picsum.photos/100'
+                          }
+                          width={30}
+                          height={30}
+                        />
+                        <div className="flex flex-col items-end">
+                          <img
+                            src={message.body}
+                            className="aspect-video max-h-20 bg-slate-200 object-contain p-3"
+                            alt=""
+                          />
+                          <small className="text-xs text-slate-500">
+                            {moment(message.createdAt)
+                              .startOf('second')
+                              .fromNow()}
+                          </small>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div key={message._id} className={`flex gap-3 items-start ${message.sender._id === user?._id ? "flex-row-reverse" : ""}`}>
-                      <Avatar src={message.sender._id === user?._id ? message.sender.avatar || "https://picsum.photos/100" : message.receiver.avatar || "https://picsum.photos/100"} width={30} height={30} />
-                      <div className={`flex flex-col ${message.sender._id === user?._id ? "items-end" : ""}`}>
-                        <span className="bg-slate-200 px-3 py-1 rounded-sm w-max">{message.body}</span>
-                        <small className="text-xs text-slate-500">{moment(message.createdAt).startOf('second').fromNow()}</small>
+                    ) : (
+                      <div
+                        key={message._id}
+                        className={`flex items-start gap-3 ${
+                          message.sender._id === user?._id
+                            ? 'flex-row-reverse'
+                            : ''
+                        }`}
+                      >
+                        <Avatar
+                          src={
+                            message.sender._id === user?._id
+                              ? message.sender.avatar ||
+                                'https://picsum.photos/100'
+                              : message.receiver.avatar ||
+                                'https://picsum.photos/100'
+                          }
+                          width={30}
+                          height={30}
+                        />
+                        <div
+                          className={`flex flex-col ${
+                            message.sender._id === user?._id ? 'items-end' : ''
+                          }`}
+                        >
+                          <span className="w-max rounded-sm bg-slate-200 px-3 py-1">
+                            {message.body}
+                          </span>
+                          <small className="text-xs text-slate-500">
+                            {moment(message.createdAt)
+                              .startOf('second')
+                              .fromNow()}
+                          </small>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
                 <div ref={messagesEndRef} />
               </>
@@ -119,36 +253,76 @@ export default function DashboardContent({ toggleUserProfile, selectedUser }: Da
         )}
       </div>
 
-      <div className="w-full p-5 flex gap-1 items-center">
-        <button className="w-[30px] h-[30px] rounded-full flex justify-center items-center"><BsPlusCircle className="w-5 h-5" /></button>
-        <label className="cursor-pointer w-[30px] h-[30px] rounded-full flex justify-center items-center" htmlFor="image-send">
-          <input type="file" hidden id="image-send" onChange={({ target }) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(target?.files?.[0]!);
-            reader.onload = ({ target }) => {
+      <div className="flex w-full items-center gap-1 p-5">
+        <button className="flex h-[30px] w-[30px] items-center justify-center rounded-full">
+          <BsPlusCircle className="h-5 w-5" />
+        </button>
+        <label
+          className="flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-full"
+          htmlFor="image-send"
+        >
+          <input
+            type="file"
+            hidden
+            id="image-send"
+            onChange={({ target }) => {
+              const reader = new FileReader()
+              reader.readAsDataURL(target?.files?.[0]!)
+              reader.onload = ({ target }) => {
+                sendMessage({
+                  body: target?.result as string,
+                  receiver: selectedUser._id!,
+                })
+              }
+            }}
+          />
+          <FiImage className="h-5 w-5" />
+        </label>
+        <button className="flex h-[30px] w-[30px] items-center justify-center rounded-full">
+          <AiOutlineFileImage className="h-5 w-5" />
+        </button>
+        <button className="flex h-[30px] w-[30px] items-center justify-center rounded-full">
+          <AiOutlineGift className="h-5 w-5" />
+        </button>
+        <div className="relative flex flex-1 items-center rounded-full bg-slate-100 px-1 shadow-sm">
+          {whoIsTyping && (
+            <span className="absolute -top-5 text-xs italic text-stone-500">
+              {whoIsTyping}
+            </span>
+          )}
+          <input
+            type="text"
+            placeholder="Aa"
+            className="h-10 flex-1 border-none bg-transparent pl-3 outline-none"
+            value={value}
+            onChange={({ target }) => setValue(target.value)}
+            onFocus={() => sendShowTyping()}
+            onBlur={() => sendTypingEnd()}
+          />
+          <EmojiPicker
+            onClick={(emoji) =>
               sendMessage({
-                body: target?.result as string,
-                receiver: selectedUser._id!
+                body: emoji,
+                receiver: selectedUser._id!,
               })
             }
-          }} />
-          <FiImage className="w-5 h-5" />
-        </label>
-        <button className="w-[30px] h-[30px] rounded-full flex justify-center items-center"><AiOutlineFileImage className="w-5 h-5" /></button>
-        <button className="w-[30px] h-[30px] rounded-full flex justify-center items-center"><AiOutlineGift className="w-5 h-5" /></button>
-        <div className="flex flex-1 items-center bg-slate-100 rounded-full shadow-sm px-1">
-          <input type="text" placeholder="Aa" className="bg-transparent flex-1 outline-none border-none pl-3 h-10" value={value} onChange={({ target }) => setValue(target.value)} />
-          <EmojiPicker onClick={(emoji) => sendMessage({
-          body: emoji,
-          receiver: selectedUser._id!
-        })}>
-            <button className="w-[30px] h-[30px] rounded-full flex justify-center items-center"><BsEmojiSmileFill className="w-5 h-5" /></button>
+          >
+            <button className="flex h-[30px] w-[30px] items-center justify-center rounded-full">
+              <BsEmojiSmileFill className="h-5 w-5" />
+            </button>
           </EmojiPicker>
         </div>
-        <button className="w-[30px] h-[30px] rounded-full flex justify-center items-center" onClick={() => sendMessage({
-          body: value || "❤",
-          receiver: selectedUser._id!
-        })}><AiFillHeart className="w-5 h-5" /></button>
+        <button
+          className="flex h-[30px] w-[30px] items-center justify-center rounded-full"
+          onClick={() =>
+            sendMessage({
+              body: value || '❤',
+              receiver: selectedUser._id!,
+            })
+          }
+        >
+          <AiFillHeart className="h-5 w-5" />
+        </button>
       </div>
     </div>
   )
