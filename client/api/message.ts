@@ -18,3 +18,12 @@ export const GET_MESSAGES = ({ queryKey }: any) => {
     method: "GET"
   })
 }
+
+export const GET_LAST_MESSAGE = ({ queryKey }: any) => {
+  const [_, args] = queryKey;
+  return http({
+    url: `/messages/last_message`,
+    params: args,
+    method: "GET"
+  })
+}

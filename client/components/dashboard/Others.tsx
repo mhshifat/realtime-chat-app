@@ -61,7 +61,9 @@ export default function DashboardOthers({
         </div>
         <>
           {messagesLoading ? (
-            <Loader />
+            <div className="py-14">
+              <Loader />
+            </div>
           ) : (
             <div>
               {!messages?.data?.result.filter((item: IMessage) =>

@@ -46,7 +46,6 @@ export default function DashboardContent({
   const {
     data: messages,
     isLoading: messagesLoading,
-    isFetched,
     refetch,
   } = useQuery(
     [API.MESSAGE.GET_MESSAGES.name, { receiver: selectedUser?._id }],
@@ -67,6 +66,12 @@ export default function DashboardContent({
         'Successfully sent your message'
       )
       await queryClient.refetchQueries(API.MESSAGE.GET_MESSAGES.name)
+      await queryClient.refetchQueries([
+        API.MESSAGE.GET_LAST_MESSAGE.name,
+        {
+          receiver: values.receiver,
+        },
+      ])
       setValue('')
       socket.emit(SOCKET_EVENTS.MESSAGE_SENT, {
         sender: user,
@@ -95,10 +100,16 @@ export default function DashboardContent({
 
   useEffect(() => {
     socket.on(SOCKET_EVENTS.MESSAGE_SENT, ({ sender }: { sender: IUser }) => {
+      refetch()
       toast.success(
         `${sender.firstName} ${sender.lastName} has sent you a message!`
       )
-      refetch()
+      queryClient.refetchQueries([
+        API.MESSAGE.GET_LAST_MESSAGE.name,
+        {
+          receiver: sender._id,
+        },
+      ])
     })
     socket.on(SOCKET_EVENTS.TYPING, ({ sender }: { sender: IUser }) => {
       setWhoIsTyping(`${sender.firstName} ${sender.lastName} is typing...`)

@@ -15,3 +15,9 @@ MessageRouter.route("/")
     [parseAuthUser, validateRequest(createMessageValidation)],
     asyncCatchHandler(MessageController.createMessage)
   );
+
+MessageRouter.route("/last_message")
+  .get(
+    [parseAuthUser],
+    asyncCatchHandler(MessageController.getLastMessage)
+  );

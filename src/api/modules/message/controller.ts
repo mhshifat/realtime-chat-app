@@ -16,6 +16,18 @@ export const MessageController = {
 			}
 		);
 	},
+  async getLastMessage(req: Request, res: Response) {
+    const { receiver } = req.query;
+    const messages = await MessageServices.find({ $or: [{ sender: (req as any).user._id, receiver }, { sender: receiver, receiver: (req as any).user._id }] }, { createdAt: -1 });
+    return SuccessResponses(
+      res,
+      messages[0],
+      {
+        statusCode: 200,
+        log: `[SYSTEM] => Last Message got for ${receiver} by ${(req as any).user._id}`,
+      }
+    );
+  },
 	async createMessage(req: Request, res: Response) {
 		const newDoc = await MessageServices.createMessage({
       ...req.body,

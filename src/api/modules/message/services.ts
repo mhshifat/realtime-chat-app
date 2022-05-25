@@ -5,8 +5,8 @@ import { AuthServices } from "../auth/services";
 import { MessageModal } from './model';
 
 export const MessageServices = {
-  async find(query: FilterQuery<MessageDocument>) {
-    const docs = await MessageModal.find(query).populate(["receiver", "sender"]);
+  async find(query: FilterQuery<MessageDocument>, sort?: any) {
+    const docs = await MessageModal.find(query).sort(sort).populate(["receiver", "sender"]);
     return docs;
   },
   async findById(id: MessageDocument["_id"]) {
