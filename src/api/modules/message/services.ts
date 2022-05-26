@@ -30,6 +30,6 @@ export const MessageServices = {
   },
   async createMessage({ ...body }: CreateMessageFormValues) {
     const newDoc = await MessageModal.create(body);
-    return newDoc;
+    return await MessageModal.populate(newDoc, ["receiver", "sender"].join(" "));
   },
 }

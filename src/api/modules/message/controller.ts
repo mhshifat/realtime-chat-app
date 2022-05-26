@@ -42,4 +42,15 @@ export const MessageController = {
 			}
 		);
 	},
+  async updateMessage(req: Request, res: Response) {
+    const updatedDoc = await MessageServices.updateDocument(req.params.id, req.body);
+    return SuccessResponses(
+      res,
+      updatedDoc,
+      {
+        statusCode: 201,
+        log: `[SYSTEM] => Message updated for ${req.body.receiver} by ${req.body.sender}`,
+      }
+    );
+  },
 };

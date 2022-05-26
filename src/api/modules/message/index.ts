@@ -2,7 +2,7 @@ import { Router } from "express";
 import { asyncCatchHandler } from "../../../utils";
 import { parseAuthUser, validateRequest } from "../../middlewares";
 import { MessageController } from "./controller";
-import { createMessageValidation } from "./validations";
+import { createMessageValidation, updateMessageValidation } from "./validations";
 
 export const MessageRouter = Router();
 
@@ -14,6 +14,12 @@ MessageRouter.route("/")
   .post(
     [parseAuthUser, validateRequest(createMessageValidation)],
     asyncCatchHandler(MessageController.createMessage)
+  );
+
+MessageRouter.route("/:id")
+  .patch(
+    [parseAuthUser, validateRequest(updateMessageValidation)],
+    asyncCatchHandler(MessageController.updateMessage)
   );
 
 MessageRouter.route("/last_message")

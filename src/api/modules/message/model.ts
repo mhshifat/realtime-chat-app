@@ -16,6 +16,10 @@ const document = new Schema<MessageDocument>({
     ref: "User",
     required: true
   },
+  seen: {
+    type: Boolean,
+    default: false
+  },
 }, {
   timestamps: true,
 });

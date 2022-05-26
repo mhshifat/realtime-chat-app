@@ -10,6 +10,14 @@ export const CREATE_MESSAGE = (values: MessageFormValues) => {
   })
 }
 
+export const UPDATE_MESSAGE = ({ id, ...values }: Partial<MessageFormValues> & { id: string }) => {
+  return http({
+    url: `/messages/${id}`,
+    data: values,
+    method: "PATCH"
+  })
+}
+
 export const GET_MESSAGES = ({ queryKey }: any) => {
   const [_, args] = queryKey;
   return http({

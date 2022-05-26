@@ -19,6 +19,7 @@ import toast from 'react-hot-toast'
 export interface MessageFormValues {
   receiver: string
   body: string
+  seen?: boolean
 }
 export interface DashboardContentProps {
   selectedUser: IUser | null
@@ -43,29 +44,31 @@ export default function DashboardContent({
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const messagesEndRef = useRef<any>(null)
-  const {
-    data: messages,
-    isLoading: messagesLoading,
-    refetch,
-  } = useQuery(
+  const [messages, setMessages] = useState<IMessage[]>([])
+
+  const { isLoading: messagesLoading, refetch } = useQuery(
     [API.MESSAGE.GET_MESSAGES.name, { receiver: selectedUser?._id }],
     API.MESSAGE.GET_MESSAGES,
     {
       enabled: !!selectedUser?._id,
+      onSuccess: ({ data }) => {
+        setMessages(data?.result)
+      },
     }
   )
   const { mutateAsync: createMessage } = useMutation(API.MESSAGE.CREATE_MESSAGE)
   const [value, setValue] = useState('')
   const [whoIsTyping, setWhoIsTyping] = useState('')
+  const { mutateAsync: updateMessage } = useMutation(API.MESSAGE.UPDATE_MESSAGE)
 
   const sendMessage = useCallback(
     async (values: MessageFormValues) => {
-      await sendPromiseToastMessage(
+      const message = await sendPromiseToastMessage(
         createMessage(values),
         'Sending',
         'Successfully sent your message'
       )
-      await queryClient.refetchQueries(API.MESSAGE.GET_MESSAGES.name)
+      setMessages((values) => [...values, message])
       await queryClient.refetchQueries([
         API.MESSAGE.GET_LAST_MESSAGE.name,
         {
@@ -76,9 +79,10 @@ export default function DashboardContent({
       socket.emit(SOCKET_EVENTS.MESSAGE_SENT, {
         sender: user,
         receiver: selectedUser,
+        message,
       })
     },
-    [user, selectedUser]
+    [user, selectedUser, messages]
   )
   const sendShowTyping = useCallback(async () => {
     socket.emit(SOCKET_EVENTS.TYPING, {
@@ -99,18 +103,23 @@ export default function DashboardContent({
   })
 
   useEffect(() => {
-    socket.on(SOCKET_EVENTS.MESSAGE_SENT, ({ sender }: { sender: IUser }) => {
-      refetch()
-      toast.success(
-        `${sender.firstName} ${sender.lastName} has sent you a message!`
-      )
-      queryClient.refetchQueries([
-        API.MESSAGE.GET_LAST_MESSAGE.name,
-        {
-          receiver: sender._id,
-        },
-      ])
-    })
+    socket.on(
+      SOCKET_EVENTS.MESSAGE_SENT,
+      ({ sender, message }: { sender: IUser; message: IMessage }) => {
+        setMessages((values) => [...values, message])
+
+        refetch()
+        toast.success(
+          `${sender.firstName} ${sender.lastName} has sent you a message!`
+        )
+        queryClient.refetchQueries([
+          API.MESSAGE.GET_LAST_MESSAGE.name,
+          {
+            receiver: sender._id,
+          },
+        ])
+      }
+    )
     socket.on(SOCKET_EVENTS.TYPING, ({ sender }: { sender: IUser }) => {
       setWhoIsTyping(`${sender.firstName} ${sender.lastName} is typing...`)
     })
@@ -175,21 +184,17 @@ export default function DashboardContent({
             <span className="text-base font-medium">3 days ago</span>
           </div>
         ) : (
-          <div
-            className={`p-5 pb-0 ${
-              !messages?.data?.result?.length ? 'h-full' : ''
-            }`}
-          >
+          <div className={`p-5 pb-0 ${!messages?.length ? 'h-full' : ''}`}>
             {messagesLoading ? (
               <Loader />
-            ) : !messages?.data?.result?.length ? (
+            ) : !messages?.length ? (
               <div className="flex h-full w-full flex-col items-center justify-center p-5 py-10">
                 <p>No messages found. 😊</p>
               </div>
             ) : (
               <>
                 <div className="flex h-full flex-col gap-5">
-                  {messages?.data?.result?.map((message: IMessage) =>
+                  {messages?.map((message: IMessage) =>
                     message.body.includes('base64') ? (
                       <div
                         key={message._id}

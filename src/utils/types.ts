@@ -64,6 +64,7 @@ export interface MessageDocument {
   sender: UserDocument["_id"];
   receiver: UserDocument["_id"];
   body: string;
+  seen?: boolean;
 }
 export enum LogFormatterType {
   System="SYSTEM",

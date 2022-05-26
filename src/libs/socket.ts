@@ -1,5 +1,5 @@
 import { Server } from 'http';
-import { UserDocument } from '../utils';
+import { MessageDocument, UserDocument } from '../utils';
 
 export const SOCKET_EVENTS = {
   ADD_USER: "ADD_USER",
@@ -29,10 +29,10 @@ export function initSocket(server: Server) {
       io.sockets.emit(SOCKET_EVENTS.ACTIVE_USERS, ACTIVE_USERS);
     })
 
-    client.on(SOCKET_EVENTS.MESSAGE_SENT, ({ sender, receiver }: { sender: UserDocument, receiver: UserDocument }) => {
+    client.on(SOCKET_EVENTS.MESSAGE_SENT, ({ sender, receiver, message }: { sender: UserDocument, receiver: UserDocument, message: MessageDocument }) => {
       const receiverSocId = ACTIVE_USERS.find(u => u._id === receiver._id)?.socketId;
       if (!receiverSocId) return;
-      client.broadcast.to(receiverSocId).emit(SOCKET_EVENTS.MESSAGE_SENT, { sender, receiver });
+      client.broadcast.to(receiverSocId).emit(SOCKET_EVENTS.MESSAGE_SENT, { sender, receiver, message });
     })
 
     client.on(SOCKET_EVENTS.TYPING, ({ sender, receiver }: { sender: UserDocument, receiver: UserDocument }) => {
