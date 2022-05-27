@@ -11,7 +11,7 @@ export function DataFormatter<TData>(data: TData) {
       return restProps;
     },
     format(type: DataFormatterTypes) {
-      if (type === DataFormatterTypes.User) return this.formatUserData(formatObj.data as UserDocument)
+      if (type === DataFormatterTypes.User) return this.formatUserData(formatObj.data as unknown as UserDocument)
     },
   }
 }
