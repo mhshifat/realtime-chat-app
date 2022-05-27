@@ -5,6 +5,7 @@
   "main": "build/index.js",
   "scripts": {
     "start": "node build/index.js",
+    "preinstall": "npm i -g typescript && tsc -p",
     "dev:client": "npm run dev --prefix client",
     "dev:server": "nodemon -r ts-node --transpile-only src/index.ts",
     "serve": "concurrently --kill-others \"npm run dev:server\" \"npm run dev:client\""
