@@ -44,12 +44,6 @@ export default function SidebarUser({
     <div
       className={`flex cursor-pointer items-center py-2 px-5 transition-all duration-500 hover:bg-slate-100 ${
         selectedUser?._id === item._id ? 'bg-slate-100' : ''
-      } ${
-        lastMessage?.data?.result?.sender?._id !== user?._id &&
-        lastMessage?.data?.result?.sender?._id !== selectedUser?._id &&
-        lastMessage?.data?.result?.seen === false
-          ? 'bg-blue-300'
-          : ''
       }`}
       onClick={(e) => {
         if (lastMessage?.data?.result?._id) {
@@ -70,8 +64,13 @@ export default function SidebarUser({
           height={55}
         />
         <div className="flex w-full flex-col gap-1">
-          <span className="text-base font-medium">
+          <span className="flex items-center justify-between text-base font-medium">
             {item.firstName} - {item.lastName}
+            {lastMessage?.data?.result?.sender?._id !== user?._id &&
+              lastMessage?.data?.result?.sender?._id !== selectedUser?._id &&
+              lastMessage?.data?.result?.seen === false && (
+                <span className="flex h-2 w-2 items-center justify-center rounded-full bg-blue-600"></span>
+              )}
           </span>
           {lastMessage?.data?.result ? (
             <small className="flex justify-between text-xs text-slate-500">
