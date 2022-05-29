@@ -36,12 +36,12 @@ export default function ActivateAccountForm({}: ActivateAccountFormProps) {
   const handleUserAccountActivate = useCallback(async (formValues: ActivateAccountFormValues) => {
     const { token, user } = await sendPromiseToastMessage(
       userAccountActivate(formValues),
-      "Activating",
-      "Successfully activated your account"
+      'Activating',
+      'Successfully activated your account'
     )
-    await login?.({ token, user });
+    await login?.({ token, user })
     if (token && user) {
-      localStorage.removeItem(LOCAL_STORAGE_NAMES.ACCOUNT_ACTIVATION_EMAIL_FOR);
+      localStorage.removeItem(LOCAL_STORAGE_NAMES.ACCOUNT_ACTIVATION_EMAIL_FOR)
     }
     router.push(ROUTE_PATHS.DASHBOARD);
   }, [])

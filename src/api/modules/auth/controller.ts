@@ -30,7 +30,7 @@ export const AuthController = {
   async activateAccount(req: Request, res: Response) {
     const { user, token } = await AuthServices.activateAccount(req.body);
     return SuccessResponses(res, {
-      user: DataFormatter(user).format(DataFormatterTypes.User),
+      user: DataFormatter((user as any)._doc).format(DataFormatterTypes.User),
       token
     }, {
       log: `[SYSTEM] => Account activated for ${user.email}`
