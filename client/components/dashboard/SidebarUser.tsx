@@ -1,4 +1,5 @@
 import moment from 'moment'
+import { useMemo } from 'react'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from 'react-query'
 import { API } from '../../api'
@@ -40,6 +41,14 @@ export default function SidebarUser({
     }
   )
 
+  const isNewMessage = useMemo(
+    () =>
+      lastMessage?.data?.result?.sender?._id !== user?._id &&
+      lastMessage?.data?.result?.sender?._id !== selectedUser?._id &&
+      lastMessage?.data?.result?.seen === false,
+    [lastMessage, user, selectedUser]
+  )
+
   return (
     <div
       className={`flex cursor-pointer items-center py-2 px-5 transition-all duration-500 hover:bg-slate-100 ${
@@ -66,14 +75,16 @@ export default function SidebarUser({
         <div className="flex w-full flex-col gap-1">
           <span className="flex items-center justify-between text-base font-medium">
             {item.firstName} - {item.lastName}
-            {lastMessage?.data?.result?.sender?._id !== user?._id &&
-              lastMessage?.data?.result?.sender?._id !== selectedUser?._id &&
-              lastMessage?.data?.result?.seen === false && (
-                <span className="flex h-2 w-2 items-center justify-center rounded-full bg-blue-600"></span>
-              )}
+            {isNewMessage && (
+              <span className="flex h-2 w-2 items-center justify-center rounded-full bg-blue-600"></span>
+            )}
           </span>
           {lastMessage?.data?.result ? (
-            <small className="flex items-center gap-3 text-xs text-slate-500">
+            <small
+              className={`flex items-center gap-3 text-xs text-slate-500 ${
+                isNewMessage ? 'font-bold' : ''
+              }`}
+            >
               {lastMessage?.data?.result?.sender?._id === user?._id
                 ? 'You'
                 : `${lastMessage?.data?.result?.sender?.firstName} ${lastMessage?.data?.result?.sender?.lastName}`}{' '}

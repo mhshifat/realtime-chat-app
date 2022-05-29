@@ -1,5 +1,6 @@
 import { ReactElement } from 'react';
-import AuthProviders from './Auth';
+import AuthProvider from './Auth'
+import MessageProvider from './Message'
 
 export interface ProvidersProps {
   children: ReactElement | ReactElement[]
@@ -7,8 +8,8 @@ export interface ProvidersProps {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <AuthProviders>
-      {children}
-    </AuthProviders>
+    <AuthProvider>
+      <MessageProvider>{children}</MessageProvider>
+    </AuthProvider>
   )
 }

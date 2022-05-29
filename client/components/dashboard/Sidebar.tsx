@@ -7,6 +7,8 @@ import { API } from "../../api";
 import { useAuth } from "../../providers/Auth";
 import { useEffect, useMemo, useState } from 'react'
 import { SOCKET_EVENTS } from '../../constants'
+import { useMessage } from '../../providers/Message'
+import { IMessage } from './Content'
 
 export interface DashboardSidebarProps {
   selectedUser: IUser | null
@@ -22,12 +24,21 @@ export default function DashboardSidebar({
   activeUsers,
 }: DashboardSidebarProps) {
   const { user } = useAuth()
+  const { setMessages } = useMessage()
 
   const { data: friends, isLoading: friendsLogin } = useQuery(
     [API.USER.GET_FRIENDS.name, { id: user?._id }],
     API.USER.GET_FRIENDS,
     {
       enabled: !!user?._id,
+      onSuccess: ({ data }) => {
+        const allFriends: Record<string, IMessage[]> = {}
+
+        for (let i = 0; i < data?.data?.result?.length; i++) {
+          allFriends[data?.data?.result?.[i]?._id as string] = []
+        }
+        setMessages(allFriends)
+      },
     }
   )
 

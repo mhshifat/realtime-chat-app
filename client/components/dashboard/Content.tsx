@@ -15,6 +15,7 @@ import { useAuth, UserDocument } from "../../providers/Auth";
 import moment from "moment";
 import { SOCKET_EVENTS } from '../../constants'
 import toast from 'react-hot-toast'
+import { useMessage } from '../../providers/Message'
 
 export interface MessageFormValues {
   receiver: string
@@ -33,6 +34,7 @@ export interface IMessage {
   receiver: UserDocument
   body: string
   createdAt: string
+  seen: boolean
 }
 
 export default function DashboardContent({
@@ -44,22 +46,24 @@ export default function DashboardContent({
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const messagesEndRef = useRef<any>(null)
-  const [messages, setMessages] = useState<IMessage[]>([])
-
-  const { isLoading: messagesLoading, refetch } = useQuery(
+  const { messages, setMessages } = useMessage()
+  useState
+  const { isLoading: messagesLoading } = useQuery(
     [API.MESSAGE.GET_MESSAGES.name, { receiver: selectedUser?._id }],
     API.MESSAGE.GET_MESSAGES,
     {
       enabled: !!selectedUser?._id,
       onSuccess: ({ data }) => {
-        setMessages(data?.result)
+        setMessages((values) => ({
+          ...values,
+          [selectedUser?._id as string]: data?.result,
+        }))
       },
     }
   )
   const { mutateAsync: createMessage } = useMutation(API.MESSAGE.CREATE_MESSAGE)
   const [value, setValue] = useState('')
   const [whoIsTyping, setWhoIsTyping] = useState('')
-  const { mutateAsync: updateMessage } = useMutation(API.MESSAGE.UPDATE_MESSAGE)
 
   const sendMessage = useCallback(
     async (values: MessageFormValues) => {
@@ -68,7 +72,13 @@ export default function DashboardContent({
         'Sending',
         'Successfully sent your message'
       )
-      setMessages((values) => [...values, message])
+      setMessages((values) => ({
+        ...values,
+        [selectedUser?._id as string]: [
+          ...(values?.[selectedUser?._id as string] || []),
+          message,
+        ],
+      }))
       await queryClient.refetchQueries([
         API.MESSAGE.GET_LAST_MESSAGE.name,
         {
@@ -105,14 +115,21 @@ export default function DashboardContent({
   useEffect(() => {
     socket.on(
       SOCKET_EVENTS.MESSAGE_SENT,
-      ({ sender, message }: { sender: IUser; message: IMessage }) => {
-        setMessages((values) => [...values, message])
-
-        refetch()
+      async ({ sender, message }: { sender: IUser; message: IMessage }) => {
+        setMessages((values) => {
+          const messages = [
+            ...(values?.[message?.sender?._id as string] || []),
+            message,
+          ]
+          return {
+            ...values,
+            [message?.sender?._id as string]: messages,
+          }
+        })
         toast.success(
           `${sender.firstName} ${sender.lastName} has sent you a message!`
         )
-        queryClient.refetchQueries([
+        await queryClient.refetchQueries([
           API.MESSAGE.GET_LAST_MESSAGE.name,
           {
             receiver: sender._id,
@@ -187,89 +204,92 @@ export default function DashboardContent({
           <div className={`p-5 pb-0 ${!messages?.length ? 'h-full' : ''}`}>
             {messagesLoading ? (
               <Loader />
-            ) : !messages?.length ? (
+            ) : !messages?.[selectedUser?._id as string]?.length ? (
               <div className="flex h-full w-full flex-col items-center justify-center p-5 py-10">
                 <p>No messages found. 😊</p>
               </div>
             ) : (
               <>
-                <div className="flex h-full flex-col gap-5">
-                  {messages?.map((message: IMessage) =>
-                    message.body.includes('base64') ? (
-                      <div
-                        key={message._id}
-                        className={`flex items-start gap-3 ${
-                          message.sender._id === user?._id
-                            ? 'flex-row-reverse'
-                            : ''
-                        }`}
-                      >
-                        <Avatar
-                          src={
-                            message.sender._id === user?._id
-                              ? message.sender.avatar ||
-                                'https://picsum.photos/100'
-                              : message.receiver.avatar ||
-                                'https://picsum.photos/100'
-                          }
-                          width={30}
-                          height={30}
-                        />
-                        <div className="flex flex-col items-end">
-                          <img
-                            src={message.body}
-                            className="aspect-video max-h-20 bg-slate-200 object-contain p-3"
-                            alt=""
-                          />
-                          <small className="text-xs text-slate-500">
-                            {moment(message.createdAt)
-                              .startOf('second')
-                              .fromNow()}
-                          </small>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        key={message._id}
-                        className={`flex items-start gap-3 ${
-                          message.sender._id === user?._id
-                            ? 'flex-row-reverse'
-                            : ''
-                        }`}
-                      >
-                        <Avatar
-                          src={
-                            message.sender._id === user?._id
-                              ? message.sender.avatar ||
-                                'https://picsum.photos/100'
-                              : message.receiver.avatar ||
-                                'https://picsum.photos/100'
-                          }
-                          width={30}
-                          height={30}
-                        />
+                <div className="flex h-full flex-col justify-end gap-5">
+                  {messages?.[selectedUser?._id as string]?.map(
+                    (message: IMessage) =>
+                      message.body.includes('base64') ? (
                         <div
-                          className={`flex flex-col ${
-                            message.sender._id === user?._id ? 'items-end' : ''
+                          key={message._id}
+                          className={`flex items-start gap-3 ${
+                            message.sender._id === user?._id
+                              ? 'flex-row-reverse'
+                              : ''
                           }`}
                         >
-                          <span
-                            className="line w-max rounded-sm bg-slate-200 px-3 py-1 leading-normal"
-                            dangerouslySetInnerHTML={{
-                              __html: message.body.replace(
-                                /(?:\r\n|\r|\n)/g,
-                                '<br>'
-                              ),
-                            }}
+                          <Avatar
+                            src={
+                              message.sender._id === user?._id
+                                ? message.sender.avatar ||
+                                  'https://picsum.photos/100'
+                                : message.receiver.avatar ||
+                                  'https://picsum.photos/100'
+                            }
+                            width={30}
+                            height={30}
                           />
-                          <small className="text-xs text-slate-500">
-                            {moment(message.createdAt)
-                              .startOf('second')
-                              .fromNow()}
-                          </small>
+                          <div className="flex flex-col items-end">
+                            <img
+                              src={message.body}
+                              className="aspect-video max-h-20 bg-slate-200 object-contain p-3"
+                              alt=""
+                            />
+                            <small className="text-xs text-slate-500">
+                              {moment(message.createdAt)
+                                .startOf('second')
+                                .fromNow()}
+                            </small>
+                          </div>
                         </div>
-                      </div>
-                    )
+                      ) : (
+                        <div
+                          key={message._id}
+                          className={`flex items-start gap-3 ${
+                            message.sender._id === user?._id
+                              ? 'flex-row-reverse'
+                              : ''
+                          }`}
+                        >
+                          <Avatar
+                            src={
+                              message.sender._id === user?._id
+                                ? message.sender.avatar ||
+                                  'https://picsum.photos/100'
+                                : message.receiver.avatar ||
+                                  'https://picsum.photos/100'
+                            }
+                            width={30}
+                            height={30}
+                          />
+                          <div
+                            className={`flex flex-col ${
+                              message.sender._id === user?._id
+                                ? 'items-end'
+                                : ''
+                            }`}
+                          >
+                            <span
+                              className="line w-max rounded-sm bg-slate-200 px-[12px] py-[8px] leading-[20px]"
+                              dangerouslySetInnerHTML={{
+                                __html: message.body.replace(
+                                  /(?:\r\n|\r|\n)/g,
+                                  '<br>'
+                                ),
+                              }}
+                            />
+                            <small className="text-xs text-slate-500">
+                              {moment(message.createdAt)
+                                .startOf('second')
+                                .fromNow()}
+                            </small>
+                          </div>
+                        </div>
+                      )
                   )}
                 </div>
                 <div ref={messagesEndRef} />
