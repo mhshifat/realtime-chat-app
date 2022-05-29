@@ -198,7 +198,11 @@ export default function DashboardContent({
                     message.body.includes('base64') ? (
                       <div
                         key={message._id}
-                        className="flex flex-row-reverse items-start gap-3"
+                        className={`flex items-start gap-3 ${
+                          message.sender._id === user?._id
+                            ? 'flex-row-reverse'
+                            : ''
+                        }`}
                       >
                         <Avatar
                           src={

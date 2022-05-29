@@ -17,6 +17,7 @@ export default function Home() {
           </Link>
           <div className="flex h-full flex-col justify-center p-5">
             <LoginForm />
+
             <div className="flex items-center py-5">
               <span className="h-[1px] flex-1 bg-slate-400 opacity-[.7]"></span>
               <span className="mx-2 text-base font-semibold text-slate-600">

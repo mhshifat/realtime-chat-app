@@ -73,12 +73,17 @@ export default function SidebarUser({
               )}
           </span>
           {lastMessage?.data?.result ? (
-            <small className="flex justify-between text-xs text-slate-500">
+            <small className="flex items-center gap-3 text-xs text-slate-500">
               {lastMessage?.data?.result?.sender?._id === user?._id
                 ? 'You'
                 : `${lastMessage?.data?.result?.sender?.firstName} ${lastMessage?.data?.result?.sender?.lastName}`}{' '}
-              - {lastMessage?.data?.result?.body}{' '}
-              <span>
+              -{' '}
+              {lastMessage?.data?.result?.body?.includes('base64') ? (
+                <img src={lastMessage?.data?.result?.body} width={40} alt="" />
+              ) : (
+                lastMessage?.data?.result?.body
+              )}{' '}
+              <span className="ml-auto">
                 {moment(lastMessage?.data?.result?.body?.createdAt)
                   .startOf('second')
                   .fromNow()}
