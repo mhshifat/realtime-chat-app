@@ -253,9 +253,15 @@ export default function DashboardContent({
                             message.sender._id === user?._id ? 'items-end' : ''
                           }`}
                         >
-                          <span className="w-max rounded-sm bg-slate-200 px-3 py-1">
-                            {message.body}
-                          </span>
+                          <span
+                            className="line w-max rounded-sm bg-slate-200 px-3 py-1 leading-normal"
+                            dangerouslySetInnerHTML={{
+                              __html: message.body.replace(
+                                /(?:\r\n|\r|\n)/g,
+                                '<br>'
+                              ),
+                            }}
+                          />
                           <small className="text-xs text-slate-500">
                             {moment(message.createdAt)
                               .startOf('second')
@@ -310,14 +316,22 @@ export default function DashboardContent({
               {whoIsTyping}
             </span>
           )}
-          <input
-            type="text"
+          <textarea
             placeholder="Aa"
-            className="h-10 flex-1 border-none bg-transparent pl-3 outline-none"
+            className="h-10 flex-1 resize-none overflow-y-hidden border-none bg-transparent py-2 pl-3 outline-none"
             value={value}
             onChange={({ target }) => setValue(target.value)}
             onFocus={() => sendShowTyping()}
             onBlur={() => sendTypingEnd()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendMessage({
+                  body: e.currentTarget.value,
+                  receiver: selectedUser._id!,
+                })
+              }
+            }}
           />
           <EmojiPicker
             onClick={(emoji) =>
